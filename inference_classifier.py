@@ -191,13 +191,14 @@
 # if st.button("🔊 Speak"):
 #     if webrtc_ctx.video_processor:
 #         speak(webrtc_ctx.video_processor.text)
+
 import streamlit as st
 import cv2
 import numpy as np
 import mediapipe as mp
 import pickle
 import time
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode, RTCConfiguration
 import pyttsx3
 
 # Sidebar configuration
@@ -235,6 +236,14 @@ labels_dict = {0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'G', 7: 'H', 8
                12: 'M', 13: 'N', 14: 'O', 15: 'P', 16: 'Q', 17: 'R', 18: 'S', 19: 'T', 20: 'U', 21: 'V', 22: 'W',
                23: 'X', 24: 'Y', 25: 'Z', 26: 'SEMOGA BERUNTUNG ', 27: 'TOLONG ', 28: 'KEREN ', 29: 'HALO ',
                30: 'TERIMA KASIH ', 31: 'SAMA-SAMA '}
+
+# WebRTC configuration with TURN/STUN servers
+RTC_CONFIGURATION = RTCConfiguration({
+    "iceServers": [
+        {"urls": ["stun:stun.l.google.com:19302"]},
+        {"urls": ["turn:YOUR_TURN_SERVER"], "username": "YOUR_USERNAME", "credential": "YOUR_CREDENTIAL"}
+    ]
+})
 
 class VideoTransformer(VideoTransformerBase):
     def __init__(self):
@@ -338,7 +347,14 @@ if 'counter' not in st.session_state:
     st.session_state.counter = 0.0
 
 # Display the webcam feed
-webrtc_ctx = webrtc_streamer(key="example", video_transformer_factory=VideoTransformer)
+webrtc_ctx = webrtc_streamer(
+    key="example",
+    mode=WebRtcMode.SENDRECV,
+    rtc_configuration=RTC_CONFIGURATION,
+    video_transformer_factory=VideoTransformer,
+    media_stream_constraints={"video": True, "audio": False},
+    async_processing=True
+)
 
 # Create placeholders for the predicted character and counter
 predicted_character_container = st.empty()
@@ -350,24 +366,4 @@ if st.button("Reset"):
         webrtc_ctx.video_transformer.text = ""
         webrtc_ctx.video_transformer.counter = 0
         st.session_state.text = ""
-        st.session_state.counter = 0.0
-
-# Function to handle text-to-speech
-def speak(text):
-    engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()
-
-# Text-to-speech button
-if st.button("🔊 Speak"):
-    if webrtc_ctx.video_transformer:
-        speak(webrtc_ctx.video_transformer.text)
-
-# Continuously update the containers with the predicted character and counter
-while True:
-    if webrtc_ctx.video_transformer:
-        st.session_state.text = webrtc_ctx.video_transformer.text
-        st.session_state.counter = webrtc_ctx.video_transformer.counter
-        predicted_character_container.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
-        counter_container.text(f"Counter: {st.session_state.counter:.2f} seconds")
-    time.sleep(0.1)
+        st.session_state.counter = 
