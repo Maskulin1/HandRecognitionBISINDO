@@ -48,9 +48,6 @@ class VideoProcessor(VideoProcessorBase):
     def recv(self, frame):
         image = frame.to_ndarray(format="bgr24")
 
-        # Flip the image horizontally
-        image = cv2.flip(image, 1)
-
         data_aux = []
         x_ = []
         y_ = []
