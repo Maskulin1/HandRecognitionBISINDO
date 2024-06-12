@@ -4,16 +4,13 @@ import numpy as np
 import mediapipe as mp
 import pickle
 import time
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, VideoProcessorBase
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 import pyttsx3
 
 # Sidebar configuration
 with st.sidebar:
-    # Adding header
     st.header("BISINDO Recognition", divider='rainbow')
-    # Adding logo
     st.image("bisindo.jpg")
-    # Adding description
     st.write("Website Deteksi Gerakan Tangan ini memiliki kemampuan melakukan identifikasi alfabet BISINDO A-Z.")
     st.image("kataisyarat.jpg")
     st.write("Serta 6 kata antara lain:\n"
@@ -23,7 +20,6 @@ with st.sidebar:
              "- Terima kasih\n"
              "- Keren\n"
              "- Halo")
-    # Adding subheader
     st.subheader("by Reihan Septyawan")
 
 # Load the trained model
@@ -147,7 +143,12 @@ if 'counter' not in st.session_state:
 webrtc_ctx = webrtc_streamer(
     key="example", 
     video_processor_factory=VideoProcessor,
-    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+    rtc_configuration={
+        "iceServers": [
+            {"urls": ["stun:stun.l.google.com:19302"]},
+            {"urls": ["stun:global.stun.twilio.com:3478?transport=udp"]}
+        ]
+    }
 )
 
 # Reset button
