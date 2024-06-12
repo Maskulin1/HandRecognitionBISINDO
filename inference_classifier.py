@@ -4,7 +4,7 @@ import numpy as np
 import mediapipe as mp
 import pickle
 import time
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, VideoProcessorBase
 import pyttsx3
 
 # Sidebar configuration
@@ -26,7 +26,6 @@ with st.sidebar:
     # Adding subheader
     st.subheader("by Reihan Septyawan")
 
-
 # Load the trained model
 model_dict = pickle.load(open('model.p', 'rb'))
 model = model_dict['model']
@@ -43,14 +42,14 @@ labels_dict = {0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'G', 7: 'H', 8
                23: 'X', 24: 'Y', 25: 'Z', 26: 'SEMOGA BERUNTUNG ', 27: 'TOLONG ', 28: 'KEREN ', 29: 'HALO ',
                30: 'TERIMA KASIH ', 31: 'SAMA-SAMA '}
 
-class VideoTransformer(VideoTransformerBase):
+class VideoProcessor(VideoProcessorBase):
     def __init__(self):
         self.prev_prediction = None
         self.prev_time = time.time()
         self.text = ""
         self.counter = 0
 
-    def transform(self, frame):
+    def recv(self, frame):
         image = frame.to_ndarray(format="bgr24")
 
         data_aux = []
@@ -114,7 +113,7 @@ class VideoTransformer(VideoTransformerBase):
                 self.prev_time = current_time
                 self.counter = 0
 
-        return image
+        return frame.from_ndarray(image, format="bgr24")
 
 # Add custom CSS for background color
 st.markdown(
@@ -145,17 +144,13 @@ if 'counter' not in st.session_state:
     st.session_state.counter = 0.0
 
 # Display the webcam feed
-webrtc_ctx = webrtc_streamer(key="example", video_transformer_factory=VideoTransformer)
-
-# Create placeholders for the predicted character and counter
-predicted_character_container = st.empty()
-counter_container = st.empty()
+webrtc_ctx = webrtc_streamer(key="example", video_processor_factory=VideoProcessor)
 
 # Reset button
 if st.button("Reset"):
-    if webrtc_ctx.video_transformer:
-        webrtc_ctx.video_transformer.text = ""
-        webrtc_ctx.video_transformer.counter = 0
+    if webrtc_ctx.video_processor:
+        webrtc_ctx.video_processor.text = ""
+        webrtc_ctx.video_processor.counter = 0
         st.session_state.text = ""
         st.session_state.counter = 0.0
 
@@ -167,14 +162,12 @@ def speak(text):
 
 # Text-to-speech button
 if st.button("🔊 Speak"):
-    if webrtc_ctx.video_transformer:
-        speak(webrtc_ctx.video_transformer.text)
+    if webrtc_ctx.video_processor:
+        speak(webrtc_ctx.video_processor.text)
 
-# Continuously update the containers with the predicted character and counter
-while True:
-    if webrtc_ctx.video_transformer:
-        st.session_state.text = webrtc_ctx.video_transformer.text
-        st.session_state.counter = webrtc_ctx.video_transformer.counter
-        predicted_character_container.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
-        counter_container.text(f"Counter: {st.session_state.counter:.2f} seconds")
-    time.sleep(0.1)
+# Display the predicted character and counter
+if webrtc_ctx.video_processor:
+    st.session_state.text = webrtc_ctx.video_processor.text
+    st.session_state.counter = webrtc_ctx.video_processor.counter
+    st.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
+    st.text(f"Counter: {st.session_state.counter:.2f} seconds")
