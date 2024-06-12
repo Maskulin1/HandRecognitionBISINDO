@@ -140,20 +140,24 @@ if 'counter' not in st.session_state:
     st.session_state.counter = 0.0
 
 # Display the webcam feed
-webrtc_ctx = webrtc_streamer(
-    key="example", 
-    video_processor_factory=VideoProcessor,
-    rtc_configuration={
-        "iceServers": [
-            {"urls": "stun:stun.l.google.com:19302"},
-            {"urls": "turn:global.turn.twilio.com", "username": "your_username", "credential": "your_credential"}
-        ]
-    }
-)
+try:
+    webrtc_ctx = webrtc_streamer(
+        key="example", 
+        video_processor_factory=VideoProcessor,
+        rtc_configuration={
+            "iceServers": [
+                {"urls": "stun:stun.l.google.com:19302"},
+                {"urls": "turn:global.turn.twilio.com", "username": "your_username", "credential": "your_credential"}
+            ]
+        }
+    )
+except Exception as e:
+    st.error(f"An error occurred while starting the webcam: {e}")
+    st.stop()
 
 # Reset button
 if st.button("Reset"):
-    if webrtc_ctx.video_processor:
+    if webrtc_ctx and webrtc_ctx.video_processor:
         webrtc_ctx.video_processor.text = ""
         webrtc_ctx.video_processor.counter = 0
         st.session_state.text = ""
@@ -167,11 +171,11 @@ def speak(text):
 
 # Text-to-speech button
 if st.button("🔊 Speak"):
-    if webrtc_ctx.video_processor:
+    if webrtc_ctx and webrtc_ctx.video_processor:
         speak(webrtc_ctx.video_processor.text)
 
 # Display the predicted character and counter
-if webrtc_ctx.video_processor:
+if webrtc_ctx and webrtc_ctx.video_processor:
     st.session_state.text = webrtc_ctx.video_processor.text
     st.session_state.counter = webrtc_ctx.video_processor.counter
     st.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
