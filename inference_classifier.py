@@ -144,7 +144,11 @@ if 'counter' not in st.session_state:
     st.session_state.counter = 0.0
 
 # Display the webcam feed
-webrtc_ctx = webrtc_streamer(key="example", video_processor_factory=VideoProcessor)
+webrtc_ctx = webrtc_streamer(
+    key="example", 
+    video_processor_factory=VideoProcessor,
+    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+)
 
 # Reset button
 if st.button("Reset"):
