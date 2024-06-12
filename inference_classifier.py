@@ -7,6 +7,8 @@ import time
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 from gtts import gTTS
 import os
+from io import BytesIO
+import base64
 
 # Sidebar configuration
 with st.sidebar:
@@ -107,7 +109,6 @@ class VideoProcessor(VideoProcessorBase):
                 self.prev_time = current_time
                 if self.counter >= 2:
                     self.text += predicted_character
-                    st.session_state.text = self.text  # Update session state
                     self.counter = 0
             else:
                 self.prev_prediction = predicted_character
@@ -164,20 +165,31 @@ if st.button("Reset"):
         st.session_state.text = ""
         st.session_state.counter = 0.0
 
-# Function to handle text-to-speech using gTTS
+# Function to handle text-to-speech
 def speak(text):
     tts = gTTS(text=text, lang='id')
-    tts.save("output.mp3")
-    os.system("mpg321 output.mp3")
+    fp = BytesIO()
+    tts.write_to_fp(fp)
+    fp.seek(0)
+    audio_data = fp.read()
+    st.audio(audio_data, format='audio/mp3')
+
+# Placeholder for predicted character and counter
+predicted_character_placeholder = st.empty()
+counter_placeholder = st.empty()
+
+# Loop to update the placeholders
+while True:
+    if webrtc_ctx.video_processor:
+        st.session_state.text = webrtc_ctx.video_processor.text
+        st.session_state.counter = webrtc_ctx.video_processor.counter
+        predicted_character_placeholder.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
+        counter_placeholder.text(f"Counter: {st.session_state.counter:.2f} seconds")
+
+    # Add a small delay to avoid a tight loop that uses too much CPU
+    time.sleep(0.1)
 
 # Text-to-speech button
 if st.button("🔊 Speak"):
     if webrtc_ctx.video_processor:
         speak(webrtc_ctx.video_processor.text)
-
-# Display the predicted character and counter
-if webrtc_ctx.video_processor:
-    st.session_state.text = webrtc_ctx.video_processor.text
-    st.session_state.counter = webrtc_ctx.video_processor.counter
-    st.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
-    st.text(f"Counter: {st.session_state.counter:.2f} seconds")
