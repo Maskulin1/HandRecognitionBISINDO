@@ -145,8 +145,8 @@ webrtc_ctx = webrtc_streamer(
     video_processor_factory=VideoProcessor,
     rtc_configuration={
         "iceServers": [
-            {"urls": ["stun:stun.l.google.com:19302"]},
-            {"urls": ["stun:global.stun.twilio.com:3478?transport=udp"]}
+            {"urls": "stun:stun.l.google.com:19302"},
+            {"urls": "turn:global.turn.twilio.com", "username": "your_username", "credential": "your_credential"}
         ]
     }
 )
