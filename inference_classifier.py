@@ -142,7 +142,7 @@ if 'text' not in st.session_state:
 if 'counter' not in st.session_state:
     st.session_state.counter = 0.0
 
-# Display the webcam feed
+# Display the predicted character and counter
 webrtc_ctx = webrtc_streamer(
     key="example", 
     video_processor_factory=VideoProcessor,
@@ -153,6 +153,13 @@ webrtc_ctx = webrtc_streamer(
         ]
     }
 )
+
+# Display the predicted character and counter
+if webrtc_ctx.video_processor:
+    st.session_state.text = webrtc_ctx.video_processor.text
+    st.session_state.counter = webrtc_ctx.video_processor.counter
+    st.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
+    st.text(f"Counter: {st.session_state.counter:.2f} seconds")
 
 # Reset button
 if st.button("Reset"):
@@ -172,10 +179,3 @@ def speak(text):
 if st.button("🔊 Speak"):
     if webrtc_ctx.video_processor:
         speak(webrtc_ctx.video_processor.text)
-
-# Display the predicted character and counter
-if webrtc_ctx.video_processor:
-    st.session_state.text = webrtc_ctx.video_processor.text
-    st.session_state.counter = webrtc_ctx.video_processor.counter
-    st.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
-    st.text(f"Counter: {st.session_state.counter:.2f} seconds")
