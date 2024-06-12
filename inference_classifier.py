@@ -176,22 +176,18 @@ def speak(text):
 predicted_character_placeholder = st.empty()
 counter_placeholder = st.empty()
 
-# Loop to update the placeholders
-def update_placeholders():
-    while True:
-        if webrtc_ctx.video_processor:
-            st.session_state.text = webrtc_ctx.video_processor.text
-            st.session_state.counter = webrtc_ctx.video_processor.counter
-            predicted_character_placeholder.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
-            counter_placeholder.text(f"Counter: {st.session_state.counter:.2f} seconds")
+# Update the placeholders in a loop
+while True:
+    if webrtc_ctx.video_processor:
+        st.session_state.text = webrtc_ctx.video_processor.text
+        st.session_state.counter = webrtc_ctx.video_processor.counter
+        predicted_character_placeholder.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
+        counter_placeholder.text(f"Counter: {st.session_state.counter:.2f} seconds")
 
-        # Add a small delay to avoid a tight loop that uses too much CPU
-        time.sleep(0.1)
+    # Add a small delay to avoid a tight loop that uses too much CPU
+    time.sleep(0.1)
 
 # Text-to-speech button
 if st.button("🔊 Speak"):
     if webrtc_ctx.video_processor:
         speak(webrtc_ctx.video_processor.text)
-
-# Run the placeholder update loop
-st.run(update_placeholders)
