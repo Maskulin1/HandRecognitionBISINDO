@@ -4,16 +4,18 @@ import numpy as np
 import mediapipe as mp
 import pickle
 import time
+import logging
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 import pyttsx3
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 # Sidebar configuration
 with st.sidebar:
-    # Adding header
     st.header("BISINDO Recognition", divider='rainbow')
-    # Adding logo
     st.image("bisindo.jpg")
-    # Adding description
     st.write("Website Deteksi Gerakan Tangan ini memiliki kemampuan melakukan identifikasi alfabet BISINDO A-Z.")
     st.image("kataisyarat.jpg")
     st.write("Serta 6 kata antara lain:\n"
@@ -23,12 +25,17 @@ with st.sidebar:
              "- Terima kasih\n"
              "- Keren\n"
              "- Halo")
-    # Adding subheader
     st.subheader("by Reihan Septyawan")
 
 # Load the trained model
-model_dict = pickle.load(open('model.p', 'rb'))
-model = model_dict['model']
+try:
+    model_dict = pickle.load(open('model.p', 'rb'))
+    model = model_dict['model']
+    logger.info("Model loaded successfully.")
+except Exception as e:
+    logger.error(f"Error loading model: {e}")
+    st.error("Error loading model. Please check the model file.")
+    st.stop()
 
 # Initialize MediaPipe Hands solution
 mp_hands = mp.solutions.hands
@@ -48,72 +55,79 @@ class VideoTransformer(VideoTransformerBase):
         self.prev_time = time.time()
         self.text = ""
         self.counter = 0
+        logger.debug("VideoTransformer initialized")
 
     def transform(self, frame):
-        image = frame.to_ndarray(format="bgr24")
+        logger.debug("Starting transform method")
+        try:
+            image = frame.to_ndarray(format="bgr24")
+            logger.debug("Converted frame to ndarray")
 
-        data_aux = []
-        x_ = []
-        y_ = []
+            data_aux = []
+            x_ = []
+            y_ = []
 
-        H, W, _ = image.shape
-        frame_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            H, W, _ = image.shape
+            frame_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            logger.debug("Converted frame to RGB")
 
-        results = hands.process(frame_rgb)
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(
-                    image,  # image to draw
-                    hand_landmarks,  # model output
-                    mp_hands.HAND_CONNECTIONS,  # hand connections,
-                    mp_drawing_styles.get_default_hand_landmarks_style(),
-                    mp_drawing_styles.get_default_hand_connections_style()
-                )
+            results = hands.process(frame_rgb)
+            logger.debug("Processed frame with MediaPipe hands")
 
-                for i in range(len(hand_landmarks.landmark)):
-                    x = hand_landmarks.landmark[i].x
-                    y = hand_landmarks.landmark[i].y
+            if results.multi_hand_landmarks:
+                logger.debug("Hand landmarks detected")
+                for hand_landmarks in results.multi_hand_landmarks:
+                    mp_drawing.draw_landmarks(
+                        image, hand_landmarks, mp_hands.HAND_CONNECTIONS,
+                        mp_drawing_styles.get_default_hand_landmarks_style(),
+                        mp_drawing_styles.get_default_hand_connections_style()
+                    )
 
-                    x_.append(x)
-                    y_.append(y)
+                    for i in range(len(hand_landmarks.landmark)):
+                        x = hand_landmarks.landmark[i].x
+                        y = hand_landmarks.landmark[i].y
 
-                for i in range(len(hand_landmarks.landmark)):
-                    x = hand_landmarks.landmark[i].x
-                    y = hand_landmarks.landmark[i].y
-                    data_aux.append(x - min(x_))
-                    data_aux.append(y - min(y_))
+                        x_.append(x)
+                        y_.append(y)
 
-            # Ensure that we have data for both hands (84 elements: 21 landmarks * 2 (x, y) * 2 hands)
-            max_length = 84
-            if len(data_aux) < max_length:
-                data_aux.extend([0] * (max_length - len(data_aux)))
+                    for i in range(len(hand_landmarks.landmark)):
+                        x = hand_landmarks.landmark[i].x
+                        y = hand_landmarks.landmark[i].y
+                        data_aux.append(x - min(x_))
+                        data_aux.append(y - min(y_))
 
-            x1 = int(min(x_) * W) - 10
-            y1 = int(min(y_) * H) - 10
+                max_length = 84
+                if len(data_aux) < max_length:
+                    data_aux.extend([0] * (max_length - len(data_aux)))
 
-            x2 = int(max(x_) * W) - 10
-            y2 = int(max(y_) * H) - 10
+                x1 = int(min(x_) * W) - 10
+                y1 = int(min(y_) * H) - 10
 
-            prediction = model.predict([np.asarray(data_aux)])
-            predicted_character = labels_dict[int(prediction[0])]
+                x2 = int(max(x_) * W) - 10
+                y2 = int(max(y_) * H) - 10
 
-            # Draw rectangle and put text
-            cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 0), 4)
-            cv2.putText(image, predicted_character, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 0, 0), 3, cv2.LINE_AA)
+                prediction = model.predict([np.asarray(data_aux)])
+                predicted_character = labels_dict[int(prediction[0])]
 
-            current_time = time.time()
-            if self.prev_prediction == predicted_character:
-                self.counter += current_time - self.prev_time
-                self.prev_time = current_time
-                if self.counter >= 2:
-                    self.text += predicted_character
+                cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 0), 4)
+                cv2.putText(image, predicted_character, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 0, 0), 3, cv2.LINE_AA)
+
+                current_time = time.time()
+                if self.prev_prediction == predicted_character:
+                    self.counter += current_time - self.prev_time
+                    self.prev_time = current_time
+                    if self.counter >= 2:
+                        self.text += predicted_character
+                        self.counter = 0
+                else:
+                    self.prev_prediction = predicted_character
+                    self.prev_time = current_time
                     self.counter = 0
-            else:
-                self.prev_prediction = predicted_character
-                self.prev_time = current_time
-                self.counter = 0
 
-        return image
+            return image
+        except Exception as e:
+            logger.error(f"Error in transform method: {e}")
+            return frame.to_ndarray(format="bgr24")
 
 # Add custom CSS for background color
 st.markdown(
@@ -144,7 +158,12 @@ if 'counter' not in st.session_state:
     st.session_state.counter = 0.0
 
 # Display the webcam feed
-webrtc_ctx = webrtc_streamer(key="example", video_processor_factory=VideoTransformer)
+try:
+    webrtc_ctx = webrtc_streamer(key="example", video_processor_factory=VideoTransformer)
+    logger.info("WebRTC streamer started")
+except Exception as e:
+    logger.error(f"Error starting WebRTC streamer: {e}")
+    st.error("Error starting WebRTC streamer. Please check your connection and try again.")
 
 # Create placeholders for the predicted character and counter
 predicted_character_container = st.empty()
@@ -157,17 +176,23 @@ if st.button("Reset"):
         webrtc_ctx.video_transformer.counter = 0
         st.session_state.text = ""
         st.session_state.counter = 0.0
+        logger.info("Reset button clicked")
 
 # Function to handle text-to-speech
 def speak(text):
-    engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()
+    try:
+        engine = pyttsx3.init()
+        engine.say(text)
+        engine.runAndWait()
+        logger.info("Text-to-speech executed")
+    except Exception as e:
+        logger.error(f"Error in text-to-speech: {e}")
 
 # Text-to-speech button
 if st.button("🔊 Speak"):
     if webrtc_ctx.video_transformer:
         speak(webrtc_ctx.video_transformer.text)
+        logger.info("Speak button clicked")
 
 # Continuously update the containers with the predicted character and counter
 while True:
@@ -176,4 +201,5 @@ while True:
         st.session_state.counter = webrtc_ctx.video_transformer.counter
         predicted_character_container.markdown(f"<div class='predicted-character'>Predicted Character: {st.session_state.text}</div>", unsafe_allow_html=True)
         counter_container.text(f"Counter: {st.session_state.counter:.2f} seconds")
+        logger.debug(f"Updated UI with predicted character: {st.session_state.text} and counter: {st.session_state.counter:.2f}")
     time.sleep(0.1)
