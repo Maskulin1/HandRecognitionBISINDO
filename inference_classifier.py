@@ -1,3 +1,4 @@
+import av
 import streamlit as st
 import cv2
 import numpy as np
@@ -49,7 +50,7 @@ class VideoTransformer(VideoTransformerBase):
         self.text = ""
         self.counter = 0
 
-    def transform(self, frame):
+    def recv(self, frame):
         image = frame.to_ndarray(format="bgr24")
 
         data_aux = []
@@ -113,7 +114,7 @@ class VideoTransformer(VideoTransformerBase):
                 self.prev_time = current_time
                 self.counter = 0
 
-        return image
+        return av.VideoFrame.from_ndarray(image, format="bgr24")
 
 # Add custom CSS for background color
 st.markdown(
