@@ -144,7 +144,7 @@ if 'counter' not in st.session_state:
     st.session_state.counter = 0.0
 
 # Display the webcam feed
-webrtc_ctx = webrtc_streamer(key="example", video_processor_factory=VideoTransformer)
+webrtc_ctx = webrtc_streamer(key="example", video_processor_factory=VideoTransformer, media_stream_constraints={"video": True, "audio": False})
 
 # Create placeholders for the predicted character and counter
 predicted_character_container = st.empty()
