@@ -1,2 +1,7 @@
 libgl1-mesa-glx
 libespeak1
+ffmpeg
+libsm6
+libxext6
+libopus-dev
+libvpx-dev
